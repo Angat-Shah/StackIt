@@ -8,7 +8,7 @@ import { FloatingLabelInput } from "./FloatingLabelInput";
 import RichTextEditor from "./RichTextEditor";
 
 interface AskQuestionPageProps {
-  userRole: 'guest' | 'user';
+  userRole: 'guest' | 'user' | 'admin';
   onBack: () => void;
   onSubmit: (question: { title: string; content: string; tags: string[] }) => void;
   onSignIn: () => void;

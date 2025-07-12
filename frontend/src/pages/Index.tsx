@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
+import { useAuth } from "@/contexts/AuthContext";
 import SplashScreen from "@/components/SplashScreen";
 import UserRoleSelection from "@/components/UserRoleSelection";
 import HomePage from "@/components/HomePage";
@@ -8,9 +9,11 @@ import AskQuestionPage from "@/components/AskQuestionPage";
 import NotificationsPage from "@/components/NotificationsPage";
 import ProfilePage from "@/components/ProfilePage";
 import QuestionDetail from "@/components/QuestionDetail";
+import AdminPanel from "@/components/AdminPanel";
+import AdminAuth from "@/components/AdminAuth";
 
 type AppState = 'splash' | 'role-selection' | 'home';
-type UserRole = 'guest' | 'user';
+type UserRole = 'guest' | 'user' | 'admin';
 
 interface UserData {
   email: string;
@@ -58,6 +61,7 @@ interface Notification {
 }
 
 const Index = () => {
+  const { currentUser, logout: firebaseLogout } = useAuth();
   const [appState, setAppState] = useState<AppState>('splash');
   const [previousState, setPreviousState] = useState<AppState>('splash');
   const [previousPage, setPreviousPage] = useState<string>('home');
@@ -65,6 +69,8 @@ const Index = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminAuth, setShowAdminAuth] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: '1',
@@ -273,13 +279,19 @@ const Index = () => {
     setSelectedQuestionId(null);
   };
 
-  const handleLogout = () => {
-    // Store current page before logout for proper back navigation
-    setPreviousPage(currentPage);
-    setPreviousState('home');
-    setUserRole(null);
-    setUserData(null);
-    setAppState('role-selection');
+  const handleLogout = async () => {
+    try {
+      await firebaseLogout();
+      // Store current page before logout for proper back navigation
+      setPreviousPage(currentPage);
+      setPreviousState('home');
+      setUserRole(null);
+      setUserData(null);
+      setIsAdmin(false);
+      setAppState('role-selection');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const handleQuestionClick = (questionId: string) => {
@@ -415,6 +427,31 @@ const Index = () => {
     }
   };
 
+  const handleAdminLogin = (success: boolean) => {
+    setIsAdmin(success);
+    setShowAdminAuth(false);
+    if (success) {
+      setCurrentPage('admin');
+    }
+  };
+
+  const handleBanUser = (userId: string) => {
+    // Mock implementation - in real app would call API
+    console.log('Banning user:', userId);
+  };
+
+  const handleRemoveAnswer = (questionId: string, answerId: string) => {
+    setQuestions(prev => prev.map(q => 
+      q.id === questionId 
+        ? { ...q, answers: q.answers.filter(a => a.id !== answerId) }
+        : q
+    ));
+  };
+
+  const handleRemoveQuestion = (questionId: string) => {
+    setQuestions(prev => prev.filter(q => q.id !== questionId));
+  };
+
   if (appState === 'splash') {
     return <SplashScreen onContinue={handleSplashContinue} />;
   }
@@ -424,6 +461,15 @@ const Index = () => {
       <UserRoleSelection 
         onRoleSelect={handleRoleSelect}
         onBack={handleBack}
+      />
+    );
+  }
+
+  if (showAdminAuth) {
+    return (
+      <AdminAuth 
+        onAdminLogin={handleAdminLogin}
+        onBack={() => setShowAdminAuth(false)}
       />
     );
   }
@@ -439,7 +485,7 @@ const Index = () => {
     return authorMatch;
   });
 
-  const userAnswers: Answer[] = [];
+  const userAnswers: (Answer & { questionTitle: string; questionId: string })[] = [];
   questions.forEach(q => {
     q.answers.forEach(a => {
       const authorMatch = userData?.displayAs === 'anonymous' ? 
@@ -467,6 +513,7 @@ const Index = () => {
         onNotificationClick={handleNotificationClick}
         hideSearch={true}
         hideHome={true}
+        onAdminAccess={() => setShowAdminAuth(true)}
       />
       
       <main>
@@ -528,6 +575,17 @@ const Index = () => {
             onQuestionClick={handleQuestionClick}
             onProfileUpdate={handleProfileUpdate}
             onAcceptAnswer={handleAcceptAnswer}
+          />
+        )}
+
+        {currentPage === 'admin' && (
+          <AdminPanel
+            isAdmin={isAdmin}
+            questions={questions}
+            onBanUser={handleBanUser}
+            onRemoveAnswer={handleRemoveAnswer}
+            onRemoveQuestion={handleRemoveQuestion}
+            onQuestionClick={handleQuestionClick}
           />
         )}
       </main>

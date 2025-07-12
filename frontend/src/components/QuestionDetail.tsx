@@ -34,7 +34,7 @@ interface Question {
 
 interface QuestionDetailProps {
   question: Question;
-  userRole: 'guest' | 'user';
+  userRole: 'guest' | 'user' | 'admin';
   isAuthor?: boolean;
   onBack: () => void;
   onVote: (questionId: string, voteType: 'up' | 'down') => void;
