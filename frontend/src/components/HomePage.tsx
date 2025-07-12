@@ -1,166 +1,104 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowUp, ArrowDown, MessageSquare, Search, Filter, Clock, TrendingUp, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowUp, MessageSquare, Clock, Search, Eye, CheckCircle } from "lucide-react";
 
 interface Question {
   id: string;
   title: string;
-  description: string;
+  content: string;
   tags: string[];
-  author: {
-    name: string;
-    avatar?: string;
-    reputation: number;
-  };
+  author: string;
+  authorInitials: string;
   votes: number;
-  answers: number;
-  views: number;
+  answers: any[];
   timestamp: string;
-  isAccepted: boolean;
+  views?: number;
 }
 
 interface HomePageProps {
   userRole: 'guest' | 'user';
   onQuestionClick: (questionId: string) => void;
+  questions: Question[];
 }
 
-const HomePage = ({ userRole, onQuestionClick }: HomePageProps) => {
+const HomePage = ({ userRole, onQuestionClick, questions }: HomePageProps) => {
   const [sortBy, setSortBy] = useState('newest');
   const [filterTag, setFilterTag] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Mock data
-  const questions: Question[] = [
-    {
-      id: '1',
-      title: 'How to implement React Router with TypeScript?',
-      description: 'I\'m trying to set up React Router in my TypeScript project but getting type errors...',
-      tags: ['react', 'typescript', 'routing'],
-      author: {
-        name: 'Sarah Chen',
-        reputation: 2840
-      },
-      votes: 23,
-      answers: 4,
-      views: 156,
-      timestamp: '2 hours ago',
-      isAccepted: true
-    },
-    {
-      id: '2',
-      title: 'Best practices for API error handling in Next.js',
-      description: 'What are the recommended patterns for handling API errors in Next.js applications?',
-      tags: ['nextjs', 'javascript', 'api', 'error-handling'],
-      author: {
-        name: 'Mike Johnson',
-        reputation: 1520
-      },
-      votes: 15,
-      answers: 2,
-      views: 89,
-      timestamp: '4 hours ago',
-      isAccepted: false
-    },
-    {
-      id: '3',
-      title: 'Database design for a social media application',
-      description: 'I need advice on designing a scalable database schema for a social media platform...',
-      tags: ['database', 'sql', 'design', 'scaling'],
-      author: {
-        name: 'Alex Rivera',
-        reputation: 3210
-      },
-      votes: 31,
-      answers: 7,
-      views: 234,
-      timestamp: '6 hours ago',
-      isAccepted: true
-    },
-    {
-      id: '4',
-      title: 'Optimizing React performance with large lists',
-      description: 'My React application becomes slow when rendering large lists. What are the best optimization techniques?',
-      tags: ['react', 'performance', 'optimization'],
-      author: {
-        name: 'Emma Davis',
-        reputation: 1890
-      },
-      votes: 18,
-      answers: 3,
-      views: 127,
-      timestamp: '8 hours ago',
-      isAccepted: false
-    }
-  ];
-
   const topTags = ['react', 'typescript', 'javascript', 'nextjs', 'database', 'performance'];
 
-  const getAuthorInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  const filteredAndSortedQuestions = questions
+    .filter(question => {
+      const matchesTag = filterTag === 'all' || question.tags.includes(filterTag);
+      const matchesSearch = searchQuery === '' || 
+        question.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        question.content.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesTag && matchesSearch;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'votes':
+          return b.votes - a.votes;
+        case 'answers':
+          return b.answers.length - a.answers.length;
+        case 'views':
+          return (b.views || 0) - (a.views || 0);
+        case 'newest':
+        default:
+          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      }
+    });
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
   };
 
-  const filteredQuestions = questions.filter(question => {
-    const matchesSearch = question.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         question.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTag = filterTag === 'all' || question.tags.includes(filterTag);
-    return matchesSearch && matchesTag;
-  });
-
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="max-w-6xl mx-auto px-6 py-6">
+      {/* Search Bar */}
+      <div className="mb-6">
+        <form onSubmit={handleSearch} className="relative max-w-2xl">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search questions..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 h-12 rounded-xl bg-muted/30 border-0 focus:bg-card transition-colors text-base"
+          />
+        </form>
+      </div>
+
       {/* Header Section */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+            <h1 className="text-2xl font-bold text-foreground mb-1">
               All Questions
             </h1>
-            <p className="text-muted-foreground">
-              {filteredQuestions.length} questions found
+            <p className="text-muted-foreground text-sm">
+              {filteredAndSortedQuestions.length} questions found
             </p>
           </div>
           
-          <div className="flex items-center gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search questions..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-80 rounded-xl bg-muted/50 border-0"
-              />
-            </div>
-            
-            {/* Filter by Tag */}
-            <Select value={filterTag} onValueChange={setFilterTag}>
-              <SelectTrigger className="w-40 rounded-xl bg-muted/50 border-0">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Filter by tag" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">All Tags</SelectItem>
-                {topTags.map(tag => (
-                  <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
+          <div className="flex items-center gap-3">
             {/* Sort */}
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-32 rounded-xl bg-muted/50 border-0">
+              <SelectTrigger className="w-36 rounded-xl bg-muted/30 border-0 h-10">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
                 <SelectItem value="newest">Newest</SelectItem>
                 <SelectItem value="votes">Most Votes</SelectItem>
                 <SelectItem value="answers">Most Answers</SelectItem>
-                <SelectItem value="views">Most Views</SelectItem>
+                <SelectItem value="views">Most Viewed</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -169,11 +107,18 @@ const HomePage = ({ userRole, onQuestionClick }: HomePageProps) => {
         {/* Top Tags */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground">Popular tags:</span>
+          <Badge 
+            variant={filterTag === 'all' ? 'default' : 'secondary'}
+            className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors rounded-lg text-xs"
+            onClick={() => setFilterTag('all')}
+          >
+            All
+          </Badge>
           {topTags.map(tag => (
             <Badge 
               key={tag}
-              variant="secondary" 
-              className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors rounded-lg"
+              variant={filterTag === tag ? 'default' : 'secondary'}
+              className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors rounded-lg text-xs"
               onClick={() => setFilterTag(tag)}
             >
               {tag}
@@ -182,87 +127,88 @@ const HomePage = ({ userRole, onQuestionClick }: HomePageProps) => {
         </div>
       </div>
 
-      {/* Questions List */}
-      <div className="space-y-4">
-        {filteredQuestions.map((question, index) => (
+      {/* Questions Grid - Square Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredAndSortedQuestions.map((question, index) => (
           <Card 
             key={question.id} 
-            className="question-card animate-fade-in"
+            className="group relative cursor-pointer hover:shadow-lg transition-all duration-300 rounded-xl aspect-square flex flex-col"
             style={{ animationDelay: `${index * 100}ms` }}
             onClick={() => onQuestionClick(question.id)}
           >
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-foreground mb-2 line-clamp-2 hover:text-primary transition-colors">
-                    {question.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm line-clamp-2 mb-3">
-                    {question.description}
-                  </p>
-                  
-                  {/* Tags */}
-                  <div className="flex items-center gap-2 flex-wrap mb-4">
-                    {question.tags.map(tag => (
-                      <Badge 
-                        key={tag} 
-                        variant="outline" 
-                        className="text-xs rounded-lg hover:bg-primary/10 cursor-pointer transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFilterTag(tag);
-                        }}
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
+            {/* Verification Badge */}
+            {question.answers.some(a => a.isAccepted) && (
+              <div className="absolute top-4 right-4 z-10">
+                <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900 rounded-full px-2 py-1">
+                  <CheckCircle className="w-3 h-3 text-green-600 dark:text-green-400" />
+                  <span className="text-xs font-medium text-green-700 dark:text-green-300">Solved</span>
                 </div>
+              </div>
+            )}
+
+            <CardContent className="p-6 flex flex-col h-full">
+              <div className="space-y-4 flex-1">
+                {/* Title */}
+                <h3 className="text-lg font-bold leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                  {question.title}
+                </h3>
                 
-                {/* Stats Column */}
-                <div className="flex flex-col items-end gap-2 ml-6">
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <ArrowUp className="w-4 h-4" />
-                      <span className="font-medium">{question.votes}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MessageSquare className="w-4 h-4" />
-                      <span className="font-medium">{question.answers}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      <span className="font-medium">{question.views}</span>
-                    </div>
-                  </div>
-                  
-                  {question.isAccepted && (
-                    <Badge className="bg-success text-success-foreground text-xs rounded-lg">
-                      Solved
+                {/* Description */}
+                <p className="text-muted-foreground text-sm line-clamp-3 leading-relaxed">
+                  {question.content}
+                </p>
+                
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1">
+                  {question.tags.slice(0, 2).map(tag => (
+                    <Badge 
+                      key={tag} 
+                      variant="secondary"
+                      className="text-xs rounded-md px-2 py-1"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                  {question.tags.length > 2 && (
+                    <Badge variant="secondary" className="text-xs rounded-md px-2 py-1">
+                      +{question.tags.length - 2}
                     </Badge>
                   )}
                 </div>
               </div>
-            </CardHeader>
-            
-            <CardContent className="pt-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={question.author.avatar} />
-                    <AvatarFallback className="bg-muted text-xs">
-                      {getAuthorInitials(question.author.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-medium">{question.author.name}</p>
-                    <p className="text-xs text-muted-foreground">{question.author.reputation} reputation</p>
+
+              {/* Stats */}
+              <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <ArrowUp className="w-4 h-4" />
+                    <span>{question.votes}</span>
                   </div>
+                  <div className="flex items-center gap-1">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>{question.answers.length}</span>
+                  </div>
+                  {question.views && (
+                    <div className="flex items-center gap-1">
+                      <Eye className="w-4 h-4" />
+                      <span>{question.views}</span>
+                    </div>
+                  )}
                 </div>
-                
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="w-3 h-3" />
-                  {question.timestamp}
+              </div>
+
+              {/* Author */}
+              <div className="flex items-center gap-2 mt-4">
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src="" />
+                  <AvatarFallback className="text-xs font-medium">
+                    {question.authorInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-medium">{question.author}</span>
+                  <span>•</span>
+                  <span>{question.timestamp}</span>
                 </div>
               </div>
             </CardContent>
@@ -271,8 +217,8 @@ const HomePage = ({ userRole, onQuestionClick }: HomePageProps) => {
       </div>
 
       {/* Empty State */}
-      {filteredQuestions.length === 0 && (
-        <div className="text-center py-12">
+      {filteredAndSortedQuestions.length === 0 && (
+        <div className="text-center py-16">
           <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Search className="w-8 h-8 text-muted-foreground" />
           </div>

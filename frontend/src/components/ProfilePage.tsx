@@ -1,19 +1,37 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Settings, Edit, Trash2, MessageSquare, ArrowUp, Award } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Settings, Edit, Trash2, MessageSquare, ArrowUp, Award, Save, Camera, Check } from "lucide-react";
 
 interface UserData {
   name: string;
   email: string;
+  displayAs: 'public' | 'anonymous';
   joinDate: string;
   reputation: number;
   questionsAsked: number;
   answersGiven: number;
   acceptedAnswers: number;
+  avatar?: string;
+}
+
+interface Answer {
+  id: string;
+  content: string;
+  author: string;
+  authorInitials: string;
+  votes: number;
+  timestamp: string;
+  isAccepted: boolean;
+  userVote?: 'up' | 'down' | null;
+  questionTitle: string;
+  questionId: string;
 }
 
 interface Question {
@@ -21,99 +39,57 @@ interface Question {
   title: string;
   tags: string[];
   votes: number;
-  answers: number;
+  answers: any[];
   timestamp: string;
-  status: 'open' | 'answered' | 'closed';
-}
-
-interface Answer {
-  id: string;
-  questionTitle: string;
-  questionId: string;
-  content: string;
-  votes: number;
-  timestamp: string;
-  isAccepted: boolean;
+  views: number;
+  isSolved?: boolean;
 }
 
 interface ProfilePageProps {
   userData: UserData;
+  userQuestions: Question[];
+  userAnswers?: Answer[];
   onBack: () => void;
   onSettings: () => void;
   onQuestionClick: (questionId: string) => void;
+  onProfileUpdate: (updates: Partial<UserData>) => void;
+  onAcceptAnswer?: (questionId: string, answerId: string) => void;
 }
 
-const ProfilePage = ({ userData, onBack, onSettings, onQuestionClick }: ProfilePageProps) => {
+const ProfilePage = ({ 
+  userData, 
+  userQuestions, 
+  userAnswers = [],
+  onBack, 
+  onSettings, 
+  onQuestionClick, 
+  onProfileUpdate,
+  onAcceptAnswer
+}: ProfilePageProps) => {
   const [deleteMode, setDeleteMode] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(userData.name);
+  const [editDisplayAs, setEditDisplayAs] = useState(userData.displayAs);
+  const [editAvatar, setEditAvatar] = useState(userData.avatar || '');
 
-  const userQuestions: Question[] = [
-    {
-      id: '1',
-      title: 'How to implement dark mode in React with Tailwind CSS?',
-      tags: ['react', 'tailwind', 'dark-mode'],
-      votes: 15,
-      answers: 3,
-      timestamp: '2 days ago',
-      status: 'answered'
-    },
-    {
-      id: '2',
-      title: 'Best practices for state management in large React applications',
-      tags: ['react', 'state-management', 'redux'],
-      votes: 8,
-      answers: 1,
-      timestamp: '5 days ago',
-      status: 'open'
-    },
-    {
-      id: '3',
-      title: 'TypeScript generic constraints explained with examples',
-      tags: ['typescript', 'generics'],
-      votes: 22,
-      answers: 4,
-      timestamp: '1 week ago',
-      status: 'answered'
-    }
-  ];
+  const handleSaveProfile = () => {
+    onProfileUpdate({
+      name: editName,
+      displayAs: editDisplayAs,
+      avatar: editAvatar
+    });
+    setIsEditing(false);
+  };
 
-  const userAnswers: Answer[] = [
-    {
-      id: '1',
-      questionTitle: 'Understanding JavaScript closures with examples',
-      questionId: '101',
-      content: 'A closure is created when a function is defined inside another function and has access to the outer function\'s variables...',
-      votes: 18,
-      timestamp: '1 day ago',
-      isAccepted: true
-    },
-    {
-      id: '2',
-      questionTitle: 'CSS Grid vs Flexbox: When to use what?',
-      questionId: '102',
-      content: 'Grid is better for two-dimensional layouts while Flexbox excels at one-dimensional layouts...',
-      votes: 12,
-      timestamp: '3 days ago',
-      isAccepted: false
-    },
-    {
-      id: '3',
-      questionTitle: 'How to optimize React performance?',
-      questionId: '103',
-      content: 'There are several key techniques: React.memo for component memoization, useMemo and useCallback for expensive computations...',
-      votes: 25,
-      timestamp: '1 week ago',
-      isAccepted: true
-    }
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'answered':
-        return 'bg-success text-success-foreground';
-      case 'closed':
-        return 'bg-destructive text-destructive-foreground';
-      default:
-        return 'bg-muted text-muted-foreground';
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setEditAvatar(result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -126,9 +102,9 @@ const ProfilePage = ({ userData, onBack, onSettings, onQuestionClick }: ProfileP
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
-          <Button variant="outline" onClick={onSettings} className="rounded-xl">
-            <Settings className="w-4 h-4 mr-2" />
-            Settings
+          <Button variant="outline" onClick={() => setIsEditing(!isEditing)} className="rounded-xl">
+            <Edit className="w-4 h-4 mr-2" />
+            {isEditing ? 'Cancel' : 'Edit Profile'}
           </Button>
         </div>
 
@@ -136,18 +112,79 @@ const ProfilePage = ({ userData, onBack, onSettings, onQuestionClick }: ProfileP
         <Card className="card-elevated">
           <CardContent className="p-6">
             <div className="flex items-start gap-6">
-              <Avatar className="w-20 h-20">
-                <AvatarFallback className="text-2xl font-bold">
-                  {userData.name.split(' ').map(n => n[0]).join('')}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="w-20 h-20">
+                  {isEditing && editAvatar ? (
+                    <img src={editAvatar} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                  ) : userData.avatar ? (
+                    <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                  ) : (
+                    <AvatarFallback className="text-2xl font-bold">
+                      {userData.name.split(' ').map(n => n[0]).join('')}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                {isEditing && (
+                  <label className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1 cursor-pointer hover:bg-primary/90">
+                    <Camera className="w-3 h-3" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
               
               <div className="flex-1">
-                <h1 className="text-2xl font-bold text-foreground mb-1">{userData.name}</h1>
-                <p className="text-muted-foreground mb-4">{userData.email}</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Member since {userData.joinDate}
-                </p>
+                {isEditing ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Name</label>
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="rounded-xl max-w-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Avatar URL (optional)</label>
+                      <Input
+                        value={editAvatar}
+                        onChange={(e) => setEditAvatar(e.target.value)}
+                        placeholder="Enter image URL or upload above"
+                        className="rounded-xl max-w-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Display As</label>
+                      <Select value={editDisplayAs} onValueChange={(value: 'public' | 'anonymous') => setEditDisplayAs(value)}>
+                        <SelectTrigger className="w-40 rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="public">Public</SelectItem>
+                          <SelectItem value="anonymous">Anonymous</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleSaveProfile} className="rounded-xl">
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Changes
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <h1 className="text-2xl font-bold text-foreground mb-1">
+                      {userData.displayAs === 'anonymous' ? 'Anonymous User' : userData.name}
+                    </h1>
+                    <p className="text-muted-foreground mb-4">{userData.email}</p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Member since {userData.joinDate} • Displaying as {userData.displayAs}
+                    </p>
+                  </>
+                )}
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
@@ -214,7 +251,7 @@ const ProfilePage = ({ userData, onBack, onSettings, onQuestionClick }: ProfileP
             {userQuestions.map((question) => (
               <Card 
                 key={question.id} 
-                className="card-elevated cursor-pointer hover:shadow-lg transition-all duration-200"
+                className="card-elevated cursor-pointer hover:shadow-lg transition-all duration-200 relative"
                 onClick={() => onQuestionClick(question.id)}
               >
                 <CardContent className="p-4">
@@ -234,15 +271,20 @@ const ProfilePage = ({ userData, onBack, onSettings, onQuestionClick }: ProfileP
                       
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>{question.votes} votes</span>
-                        <span>{question.answers} answers</span>
+                        <span>{question.answers.length} answers</span>
+                        <span>{question.views} views</span>
                         <span>{question.timestamp}</span>
                       </div>
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <Badge className={`text-xs ${getStatusColor(question.status)}`}>
-                        {question.status}
-                      </Badge>
+                      {question.isSolved && (
+                        <div className="absolute bottom-2 right-2">
+                          <Badge className="bg-success text-success-foreground text-xs">
+                            Solved
+                          </Badge>
+                        </div>
+                      )}
                       {deleteMode && (
                         <Button variant="destructive" size="sm" className="rounded-lg">
                           <Trash2 className="w-4 h-4" />
@@ -261,32 +303,29 @@ const ProfilePage = ({ userData, onBack, onSettings, onQuestionClick }: ProfileP
             {userAnswers.map((answer) => (
               <Card 
                 key={answer.id} 
-                className={`card-elevated cursor-pointer hover:shadow-lg transition-all duration-200 ${
-                  answer.isAccepted ? 'border-success border-2' : ''
-                }`}
+                className="card-elevated cursor-pointer hover:shadow-lg transition-all duration-200"
                 onClick={() => onQuestionClick(answer.questionId)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      {answer.isAccepted && (
-                        <Badge className="mb-2 bg-success text-success-foreground">
-                          <Award className="w-3 h-3 mr-1" />
-                          Accepted Answer
-                        </Badge>
-                      )}
-                      
-                      <h3 className="font-semibold text-foreground mb-2 hover:text-primary transition-colors">
+                      <h3 className="font-semibold text-foreground mb-2">
                         {answer.questionTitle}
                       </h3>
                       
-                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                        {answer.content}
-                      </p>
+                      <div className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                        <div dangerouslySetInnerHTML={{ __html: answer.content.substring(0, 150) + '...' }} />
+                      </div>
                       
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>{answer.votes} votes</span>
                         <span>{answer.timestamp}</span>
+                        {answer.isAccepted && (
+                          <Badge className="bg-success text-success-foreground">
+                            <Check className="w-3 h-3 mr-1" />
+                            Accepted
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -306,8 +345,8 @@ const ProfilePage = ({ userData, onBack, onSettings, onQuestionClick }: ProfileP
                       <Award className="w-6 h-6 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">First Answer</h3>
-                      <p className="text-sm text-muted-foreground">Posted your first answer</p>
+                      <h3 className="font-semibold">First Question</h3>
+                      <p className="text-sm text-muted-foreground">Asked your first question</p>
                     </div>
                   </div>
                 </CardContent>
@@ -321,7 +360,7 @@ const ProfilePage = ({ userData, onBack, onSettings, onQuestionClick }: ProfileP
                     </div>
                     <div>
                       <h3 className="font-semibold">Helpful Contributor</h3>
-                      <p className="text-sm text-muted-foreground">5 accepted answers</p>
+                      <p className="text-sm text-muted-foreground">Asked {userQuestions.length} questions</p>
                     </div>
                   </div>
                 </CardContent>

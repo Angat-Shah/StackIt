@@ -1,10 +1,11 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ArrowUp, ArrowDown, MessageSquare, Share, Bookmark, Check } from "lucide-react";
+import { ArrowLeft, ArrowUp, ArrowDown, MessageSquare, Share, Bookmark, Check, Edit } from "lucide-react";
+import RichTextEditor from "./RichTextEditor";
 
 interface Answer {
   id: string;
@@ -28,6 +29,7 @@ interface Question {
   answers: Answer[];
   timestamp: string;
   userVote?: 'up' | 'down' | null;
+  isSolved?: boolean;
 }
 
 interface QuestionDetailProps {
@@ -38,6 +40,8 @@ interface QuestionDetailProps {
   onVote: (questionId: string, voteType: 'up' | 'down') => void;
   onAnswerVote: (answerId: string, voteType: 'up' | 'down') => void;
   onAcceptAnswer: (answerId: string) => void;
+  onAnswerSubmit: (questionId: string, content: string) => void;
+  onAnswerEdit?: (answerId: string, content: string) => void;
 }
 
 const QuestionDetail = ({ 
@@ -47,21 +51,43 @@ const QuestionDetail = ({
   onBack, 
   onVote, 
   onAnswerVote,
-  onAcceptAnswer 
+  onAcceptAnswer,
+  onAnswerSubmit,
+  onAnswerEdit
 }: QuestionDetailProps) => {
   const [newAnswer, setNewAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
 
   const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAnswer.trim()) return;
+    if (!newAnswer.trim() || userRole === 'guest') return;
     
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 500));
     
+    onAnswerSubmit(question.id, newAnswer);
     setNewAnswer("");
     setIsSubmitting(false);
+  };
+
+  const handleEditAnswer = (answerId: string, currentContent: string) => {
+    setEditingAnswerId(answerId);
+    setEditContent(currentContent);
+  };
+
+  const handleSaveEdit = (answerId: string) => {
+    if (onAnswerEdit && editContent.trim()) {
+      onAnswerEdit(answerId, editContent);
+    }
+    setEditingAnswerId(null);
+    setEditContent("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAnswerId(null);
+    setEditContent("");
   };
 
   const VoteButton = ({ 
@@ -93,9 +119,28 @@ const QuestionDetail = ({
     </div>
   );
 
+  const renderFormattedContent = (content: string) => {
+    return content
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/~~(.*?)~~/g, '<del>$1</del>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>')
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-2" />')
+      .replace(/\n/g, '<br>');
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="max-w-4xl mx-auto p-6 space-y-6 relative">
+        {/* Solved Badge */}
+        {question.isSolved && (
+          <div className="fixed bottom-4 right-4 z-50">
+            <Badge className="bg-success text-success-foreground text-sm px-3 py-1">
+              Solved
+            </Badge>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={onBack} className="rounded-xl">
@@ -134,7 +179,7 @@ const QuestionDetail = ({
                 ))}
               </div>
               <div className="prose max-w-none text-foreground">
-                <p>{question.content}</p>
+                <div dangerouslySetInnerHTML={{ __html: renderFormattedContent(question.content) }} />
               </div>
               
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
@@ -187,17 +232,22 @@ const QuestionDetail = ({
                     onVoteClick={() => onAnswerVote(answer.id, 'down')}
                     disabled={userRole === 'guest'}
                   />
-                  {isAuthor && !answer.isAccepted && (
+                  {isAuthor && userRole === 'user' && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => onAcceptAnswer(answer.id)}
-                      className="p-2 h-8 w-8 rounded-lg hover:bg-success hover:text-success-foreground"
+                      className={`p-2 h-8 w-8 rounded-lg ${
+                        answer.isAccepted 
+                          ? 'bg-success text-success-foreground' 
+                          : 'hover:bg-success hover:text-success-foreground'
+                      }`}
+                      title={answer.isAccepted ? "Accepted answer" : "Accept this answer"}
                     >
                       <Check className="w-4 h-4" />
                     </Button>
                   )}
-                  {answer.isAccepted && (
+                  {answer.isAccepted && !isAuthor && (
                     <div className="p-2 h-8 w-8 rounded-lg bg-success text-success-foreground flex items-center justify-center">
                       <Check className="w-4 h-4" />
                     </div>
@@ -210,19 +260,65 @@ const QuestionDetail = ({
                       Accepted Answer
                     </Badge>
                   )}
-                  <div className="prose max-w-none text-foreground mb-4">
-                    <p>{answer.content}</p>
-                  </div>
                   
-                  <div className="flex items-center gap-3">
-                    <Avatar className="w-8 h-8">
-                      <AvatarFallback>{answer.authorInitials}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium">{answer.author}</p>
-                      <p className="text-xs text-muted-foreground">{answer.timestamp}</p>
+                  {editingAnswerId === answer.id ? (
+                    <div className="space-y-4">
+                      <RichTextEditor
+                        value={editContent}
+                        onChange={setEditContent}
+                        placeholder="Edit your answer..."
+                        className="w-full"
+                      />
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={() => handleSaveEdit(answer.id)}
+                          size="sm"
+                          className="rounded-xl"
+                          disabled={!editContent.trim()}
+                        >
+                          Save Changes
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          onClick={handleCancelEdit}
+                          size="sm"
+                          className="rounded-xl"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="prose max-w-none text-foreground mb-4">
+                        <div dangerouslySetInnerHTML={{ __html: renderFormattedContent(answer.content) }} />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-8 h-8">
+                            <AvatarFallback>{answer.authorInitials}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-medium">{answer.author}</p>
+                            <p className="text-xs text-muted-foreground">{answer.timestamp}</p>
+                          </div>
+                        </div>
+                        
+                        {userRole === 'user' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditAnswer(answer.id, answer.content)}
+                            className="rounded-xl"
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -237,11 +333,11 @@ const QuestionDetail = ({
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmitAnswer} className="space-y-4">
-                <Textarea
-                  placeholder="Write your answer here..."
+                <RichTextEditor
                   value={newAnswer}
-                  onChange={(e) => setNewAnswer(e.target.value)}
-                  className="min-h-32 rounded-xl resize-none"
+                  onChange={setNewAnswer}
+                  placeholder="Write your answer here..."
+                  className="w-full"
                 />
                 <Button 
                   type="submit" 
