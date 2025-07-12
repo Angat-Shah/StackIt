@@ -17,6 +17,7 @@ interface Notification {
   authorInitials?: string;
 }
 
+// Notification Card Component
 interface NotificationsPageProps {
   onBack: () => void;
   onNotificationClick: (questionId: string) => void;

@@ -11,6 +11,7 @@ interface RichTextEditorProps {
   className?: string;
 }
 
+// Html Rich Text Editor Component 
 const RichTextEditor = ({ value, onChange, placeholder, className }: RichTextEditorProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
