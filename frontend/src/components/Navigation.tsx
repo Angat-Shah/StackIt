@@ -79,6 +79,11 @@ const Navigation = ({
     onNavigate("ask");
   };
 
+  const handleNotificationClick = (notification: Notification) => {
+    onNotificationClick(notification.id);
+    setShowNotifications(false);
+  };
+
   const getUserInitials = () => {
     if (userData?.name) return userData.name.split(" ").map((n) => n[0]).join("").toUpperCase();
     if (userData?.email) return userData.email[0].toUpperCase();
