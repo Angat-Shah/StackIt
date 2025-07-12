@@ -5,6 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Bell, Search, Plus, Home, User, Settings, LogOut, Layers } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavigationProps {
   userRole: 'guest' | 'user';
@@ -16,12 +17,22 @@ interface NavigationProps {
 
 const Navigation = ({ userRole, userData, onNavigate, onLogout, notificationCount = 3 }: NavigationProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const { logout } = useAuth();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       // Handle search functionality
       console.log('Searching for:', searchQuery);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      onLogout(); // This will trigger the role selection flow
+    } catch (error) {
+      console.error('Failed to log out:', error);
     }
   };
 
@@ -148,7 +159,7 @@ const Navigation = ({ userRole, userData, onNavigate, onLogout, notificationCoun
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
-                  onClick={onLogout}
+                  onClick={handleLogout}
                   className="cursor-pointer rounded-lg mx-1 text-destructive focus:text-destructive"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
