@@ -118,6 +118,16 @@ const AdminPanel = ({
       joinDate: '2023-03-10',
       questionsCount: 5,
       answersCount: 15
+    },
+    {
+      id: '4',
+      name: 'Angat Shah',
+      email: '22amtics097@gmail.com',
+      initials: 'AS',
+      status: 'active',
+      joinDate: '2024-01-15',
+      questionsCount: 3,
+      answersCount: 8
     }
   ]);
 
@@ -156,16 +166,33 @@ const AdminPanel = ({
   );
 
   const handleBanUser = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    const isBanning = user?.status === 'active';
+    
     setUsers(prev => prev.map(user => 
       user.id === userId 
         ? { ...user, status: user.status === 'active' ? 'banned' : 'active' }
         : user
     ));
-    const user = users.find(u => u.id === userId);
+    
+    // Special notification for demo user
+    if (user?.email === '22amtics097@gmail.com') {
+      toast({
+        title: isBanning ? "Demo User Banned" : "Demo User Unbanned",
+        description: isBanning 
+          ? "Angat Shah has been banned. They will now see a ban notification when trying to login."
+          : "Angat Shah has been unbanned and can now login again.",
+        variant: isBanning ? "destructive" : "default",
+      });
+    } else {
     toast({
       title: "User Status Updated",
-      description: `${user?.name} has been ${user?.status === 'active' ? 'banned' : 'unbanned'}`,
+        description: `${user?.name} has been ${isBanning ? 'banned' : 'unbanned'}`,
     });
+    }
+    
+    // Call the backend API
+    onBanUser(userId);
   };
 
   const handleRemoveContent = (type: 'question' | 'answer', questionId: string, answerId?: string) => {
@@ -286,7 +313,14 @@ const AdminPanel = ({
             <CardContent>
               <div className="space-y-4">
                 {filteredUsers.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-4 border border-border rounded-xl">
+                  <div 
+                    key={user.id} 
+                    className={`flex items-center justify-between p-4 border rounded-xl ${
+                      user.email === '22amtics097@gmail.com' 
+                        ? 'border-orange-300 bg-orange-50 dark:bg-orange-950/20' 
+                        : 'border-border'
+                    }`}
+                  >
                     <div className="flex items-center gap-4">
                       <Avatar className="h-10 w-10">
                         <AvatarFallback className="text-sm font-medium">
@@ -299,6 +333,11 @@ const AdminPanel = ({
                           <Badge variant={user.status === 'active' ? 'default' : 'destructive'} className="text-xs">
                             {user.status}
                           </Badge>
+                          {user.email === '22amtics097@gmail.com' && (
+                            <Badge variant="outline" className="text-xs border-orange-300 text-orange-700 dark:text-orange-300">
+                              Demo User
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground">{user.email}</p>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">

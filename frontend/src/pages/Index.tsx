@@ -52,7 +52,7 @@ interface Question {
 
 interface Notification {
   id: string;
-  type: 'answer' | 'question' | 'vote';
+  type: 'answer' | 'question' | 'vote' | 'admin';
   title: string;
   message: string;
   timestamp: string;
@@ -260,13 +260,20 @@ const Index = () => {
     if (data) {
       setUserData({ ...data, displayAs: 'public' });
     }
+    
+    // If admin login, set admin state and go to admin panel
+    if (role === 'admin') {
+      setIsAdmin(true);
+      setCurrentPage('admin');
+    }
+    
     setPreviousState(appState);
     setAppState('home');
   };
 
   const handleBack = () => {
     if (previousState === 'splash') {
-      setAppState('splash');
+    setAppState('splash');
     } else {
       setAppState(previousState);
       setCurrentPage(previousPage);
@@ -285,10 +292,10 @@ const Index = () => {
       // Store current page before logout for proper back navigation
       setPreviousPage(currentPage);
       setPreviousState('home');
-      setUserRole(null);
-      setUserData(null);
+    setUserRole(null);
+    setUserData(null);
       setIsAdmin(false);
-      setAppState('role-selection');
+    setAppState('role-selection');
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -438,6 +445,21 @@ const Index = () => {
   const handleBanUser = (userId: string) => {
     // Mock implementation - in real app would call API
     console.log('Banning user:', userId);
+    
+    // Add notification for demo user ban
+    if (userId === '4') { // Angat Shah's user ID
+      setNotifications(prev => [
+        {
+          id: Date.now().toString(),
+          type: 'admin',
+          title: 'Account Banned',
+          message: 'Your account has been banned by an administrator. You can no longer access the platform.',
+          timestamp: 'just now',
+          read: false
+        },
+        ...prev
+      ]);
+    }
   };
 
   const handleRemoveAnswer = (questionId: string, answerId: string) => {

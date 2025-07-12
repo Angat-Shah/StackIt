@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface UserRoleSelectionProps {
-  onRoleSelect: (role: 'guest' | 'user', userData?: { email: string; name?: string }) => void;
+  onRoleSelect: (role: 'guest' | 'user' | 'admin', userData?: { email: string; name?: string }) => void;
   onBack: () => void;
 }
 
@@ -26,8 +26,20 @@ const UserRoleSelection = ({ onRoleSelect, onBack }: UserRoleSelectionProps) => 
     setError('');
     
     try {
-      await login(loginData.email, loginData.password);
-      onRoleSelect('user', { email: loginData.email });
+      // Check if this is admin or demo login
+      if (loginData.email === 'admin@qa-platform.com' && loginData.password === 'admin123') {
+        // Admin login - use Firebase auth
+        await login(loginData.email, loginData.password);
+        onRoleSelect('admin', { email: loginData.email, name: 'Admin' });
+      } else if (loginData.email === '22amtics097@gmail.com') {
+        // Demo user login - use Firebase auth
+        await login(loginData.email, loginData.password);
+        onRoleSelect('user', { email: loginData.email, name: 'Angat Shah' });
+      } else {
+        // Regular user login
+        await login(loginData.email, loginData.password);
+        onRoleSelect('user', { email: loginData.email });
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       if (error.code === 'auth/user-not-found') {
