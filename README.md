@@ -4,6 +4,9 @@ Odoo Hackathon 2025 | Team 404: TeamNotFound | EdTech
 
 ---
 
+[![Watch the demo video](https://img.youtube.com/vi/93hnUhkaVa0/0.jpg)](https://youtu.be/93hnUhkaVa0)
+
+
 ## Overview
 
 StackIt is an EdTech web application designed to simplify community-based knowledge sharing by providing a minimal, distraction-free Q&A platform. It enables learners and professionals to ask questions, provide solutions and collaborate more effectively in a focused, clean environment.
