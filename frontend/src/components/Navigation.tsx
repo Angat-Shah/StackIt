@@ -4,8 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Bell, Search, Plus, Home, User, LogOut, X, Menu } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { Bell, Search, Plus, Home, User, LogOut, X, Menu, Shield } from "lucide-react";
+// Removed Firebase auth import since we're using mock auth
 
 interface UserData {
   email: string;
@@ -25,7 +25,7 @@ interface Notification {
 }
 
 interface NavigationProps {
-  userRole: "guest" | "user";
+  userRole: "guest" | "user" | "admin";
   userData?: UserData;
   onNavigate: (page: string) => void;
   onLogout: () => void;
@@ -34,6 +34,7 @@ interface NavigationProps {
   onNotificationClick: (notificationId: string) => void;
   hideSearch?: boolean;
   hideHome?: boolean;
+  onAdminAccess?: () => void;
 }
 
 const Navigation = ({
@@ -46,12 +47,12 @@ const Navigation = ({
   onNotificationClick,
   hideSearch = false,
   hideHome = false,
+  onAdminAccess,
 }: NavigationProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const { logout } = useAuth();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,13 +61,8 @@ const Navigation = ({
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      onLogout();
-    } catch (error) {
-      console.error("Failed to log out:", error);
-    }
+  const handleLogout = () => {
+    onLogout();
   };
 
   const handleGuestAskQuestion = () => {
@@ -77,11 +73,6 @@ const Navigation = ({
       return;
     }
     onNavigate("ask");
-  };
-
-  const handleNotificationClick = (notification: Notification) => {
-    onNotificationClick(notification.id);
-    setShowNotifications(false);
   };
 
   const getUserInitials = () => {
@@ -175,7 +166,7 @@ const Navigation = ({
                             className={`p-3 border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors ${
                               !notification.read ? "bg-primary/5" : ""
                             }`}
-                            onClick={() => handleNotificationClick(notification)}
+                            onClick={() => onNotificationClick(notification.id)}
                           >
                             <div className="flex items-start gap-3">
                               <div
@@ -229,6 +220,19 @@ const Navigation = ({
                         <User className="w-4 h-4 mr-2" />
                         Profile
                       </Button>
+                      {onAdminAccess && (
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            onAdminAccess();
+                            setShowProfileMenu(false);
+                          }}
+                        >
+                          <Shield className="w-4 h-4 mr-2" />
+                          Admin Panel
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         className="w-full justify-start text-destructive hover:text-destructive"
